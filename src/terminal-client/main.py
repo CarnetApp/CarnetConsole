@@ -70,6 +70,8 @@ class Screen(object):
         self.current = 0
         self.page = self.bottom // self.max_lines
 
+        self.notesMetadata = {}
+
 
     def init_curses(self):
         """Setup the curses"""
@@ -141,13 +143,6 @@ class Screen(object):
                 proc = subprocess.Popen(['tidy','--hide-comments', 'yes',  '--show-body-only', 'yes', '-indent', '--indent-spaces', '2',   '--quiet', 'yes',   '--tidy-mark', 'no', '/tmp/carnettty/index.html'], stdout=subprocess.PIPE,
                              universal_newlines=True)
                 data = proc.stdout.read()
-                from bs4 import BeautifulSoup
-
-               
-
-                soup = BeautifulSoup(data)
-                div = soup.find('div', "id='edit-zone'")
-                # join(map(str, div.contents)) not working...
                 
                 f.write(data)
                 f.close()
@@ -171,7 +166,8 @@ class Screen(object):
                 #subprocess.run(['lynx','-dump', '/tmp/carnettty/index_tidy.html'])
                 curses.resetty()
                 curses.curs_set(0)
-                self.window.refresh()        
+                self.window.refresh() 
+                self.display(True)       
 
             elif ch == curses.ascii.ESC:
                 break
@@ -238,7 +234,7 @@ class Screen(object):
         if(display):
             self.display()
 
-    def display(self):
+    def display(self, refreshMetadata=False):
         """Display the items on window"""
         self.window.erase()
         num_rows, num_cols = self.window.getmaxyx()
@@ -277,8 +273,14 @@ class Screen(object):
             title = " "+path.basename(item['name'])[0:self.width-5]+" "
             title = title+long_space[0:self.width-3-len(title)]
             if(item['isFile']):
-                noteManager = NoteManager(settingsManager.getNotePath()+item['path'])
-                note = noteManager.getCachedMetadata()
+                try:
+                    note = self.notesMetadata[item['path']]
+                except KeyError:
+                    note = -1 #-1 because none can mean that notesMetadata hasn't found it, no need to reload, then
+                if(note == -1 or refreshMetadata):
+                    noteManager = NoteManager(settingsManager.getNotePath()+item['path'])
+                    note = noteManager.getCachedMetadata()
+                    self.notesMetadata[item['path']] = note
                 if(note != None):
                     text = note["shorttext"].strip().replace("\n", " ").replace("  ", " ").replace("  ", " ")[0:self.width-5]
                 else:
