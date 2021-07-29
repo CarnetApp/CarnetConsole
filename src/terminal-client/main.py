@@ -142,18 +142,9 @@ class Screen(object):
                     None
                 noteManager = NoteManager()
                 notePath = noteManager.createNewNote(self.current_directory, "/tmp/carnettty")
-                if(self.openNote(notePath,False)):
-                    while(notePath.startswith("/")):
-                        notePath = notePath[1:]
-                    actions = []
-                    action = {}
-                    action['action'] = "add"
-                    action['time'] = int(time.time() * 1000)
-                    action['path'] = notePath
-                    actions.append(action)
-                    recentDBManager = RecentDBManager()
-                    recentDBManager.addActionsToMyDB(actions)
-                    self.switchToCurrentView(True)
+                self.openNote(notePath,False, True)
+                self.switchToCurrentView(True)
+                    
 
             elif ch == ord('p'):
                 noteManager = NoteManager(settingsManager.getNotePath()+"/"+self.items[self.top +self.current]['path'])
@@ -172,8 +163,37 @@ class Screen(object):
 
             elif ch == curses.ascii.ESC:
                 break
+
+    def saveNoteIfChanged(self, noteManager, notePath, addToRecent, mod_date):
+        new_mod_date = os.stat('/tmp/carnettty/index.html').st_mtime
+        if(mod_date != new_mod_date):
+            #we need to save
+            noteManager.saveCurrentNote("/tmp/carnettty")
+            if(addToRecent):
+                notePath = notePath
+                while(notePath.startswith("/")):
+                    notePath = notePath[1:]
+                actions = []
+                action = {}
+                action['action'] = "add"
+                action['time'] = int(time.time() * 1000)
+                action['path'] = notePath
+                actions.append(action)
+                recentDBManager = RecentDBManager()
+                recentDBManager.addActionsToMyDB(actions)
+                
+        return new_mod_date
+
+    def saveNoteThread(self, noteManager, notePath, addToRecent, mod_date):
+        while self.shouldSave:
+            
+            new_mod_date = self.saveNoteIfChanged(noteManager, notePath, addToRecent, mod_date)
+            mod_date = new_mod_date
+            time.sleep(5)
+        
+
     # returns true if modified, false otherwise
-    def openNote(self, path, extract=True):
+    def openNote(self, path, extract=True, addToRecent=False):
        
         noteManager = NoteManager(settingsManager.getNotePath()+"/"+path)
         if(extract):
@@ -198,14 +218,13 @@ class Screen(object):
         curses.savetty()
         curses.endwin()
         mod_date = os.stat('/tmp/carnettty/index.html').st_mtime
+        import _thread
+        self.shouldSave = True
+        _thread.start_new_thread( self.saveNoteThread, (noteManager, path,  addToRecent, mod_date))
         subprocess.run(['nano', "/tmp/carnettty/index.html"])
-        new_mod_date = os.stat('/tmp/carnettty/index.html').st_mtime
-        if(mod_date != new_mod_date):
-            #we need to save
-            noteManager.saveCurrentNote("/tmp/carnettty")
-            modified = True
-        else:
-            modified = False
+        self.shouldSave = False
+        self.saveNoteIfChanged(noteManager, path, addToRecent, mod_date)
+      
 
             
         #subprocess.run(['lynx','-dump', '/tmp/carnettty/index_tidy.html'])
@@ -213,7 +232,6 @@ class Screen(object):
         curses.curs_set(0)
         self.window.refresh() 
         self.display(True)
-        return modified
 
     def scroll(self, direction):
         """Scrolling the window when pressing up/down arrow keys"""
