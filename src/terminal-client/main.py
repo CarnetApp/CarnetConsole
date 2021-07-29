@@ -202,7 +202,7 @@ class Screen(object):
         
         f = open("/tmp/carnettty/index_tidy.html", "w")
 
-        proc = subprocess.Popen(['tidy','--hide-comments', 'yes',  '--show-body-only', 'yes', '-indent', '--indent-spaces', '2',   '--quiet', 'yes',   '--tidy-mark', 'no', '/tmp/carnettty/index.html'], stdout=subprocess.PIPE,
+        proc = subprocess.Popen(['tidy','--hide-comments', 'yes','--show_warnings', 'no',  '--show-body-only', 'yes', '-indent', '--indent-spaces', '2',   '--quiet', 'yes',   '--tidy-mark', 'no', '/tmp/carnettty/index.html'], stdout=subprocess.PIPE,
                         universal_newlines=True)
         data = proc.stdout.read()
         
