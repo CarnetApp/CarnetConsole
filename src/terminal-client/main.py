@@ -73,7 +73,16 @@ class Screen(object):
         self.page = self.bottom // self.max_lines
 
         self.notesMetadata = {}
+        self.current_directory = "/"
 
+        
+        import _thread
+        _thread.start_new_thread( self.merge, ("Thread-1", 2, ))
+
+    def merge(self, threadName, delay):
+        recentDBManager = RecentDBManager()
+        if(recentDBManager.merge()):
+            self.switchToCurrentView(True)
 
     def init_curses(self):
         """Setup the curses"""

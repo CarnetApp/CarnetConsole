@@ -9,8 +9,7 @@ class LatestLister():
        
 
     def getList(self):
-        recentDBManager = RecentDBManager()
-        recentDBManager.merge()
+        
         recentDBManager = RecentDBManager()
         files_list = []
         
