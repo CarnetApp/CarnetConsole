@@ -103,6 +103,7 @@ class Screen(object):
     def run(self):
         """Continue running the TUI until get interrupted"""
         try:
+            self.display()
             self.input_stream()
         except KeyboardInterrupt:
             pass
@@ -263,7 +264,7 @@ class Screen(object):
     
     def refreshItemsList(self):
         if(self.current_view == "Browser"):
-            lister = PathLister("/")
+            lister = PathLister(self.current_directory)
         else:
             lister = LatestLister()
         self.items = lister.getList()
@@ -273,8 +274,13 @@ class Screen(object):
         self.top = 0
         self.current = 0
         self.current_page = 0
+        self.bottom = len(self.items)
+        self.page = self.bottom // self.max_lines
         if(display):
             self.display()
+
+    def displayCommands(self):
+        print ("pet")
 
     def display(self, refreshMetadata=False):
         """Display the items on window"""
@@ -340,7 +346,9 @@ class Screen(object):
             else:
                 self.window.addstr(idx*self.line_per_items+1+self.top_margin, 2, text, curses.color_pair(1))
             self.window.addstr(idx*self.line_per_items+2+self.top_margin, 2, "", curses.color_pair(1)| curses.A_BOLD | curses.A_UNDERLINE)
-        self.window.addstr(self.max_lines + self.top_margin, 1, "<enter> Edit note <p> Preview html note <tab> Switch view <s> Settings", curses.color_pair(1))
+        bottom_txt = "<enter> Edit note <d> Display all commands <p> Preview html note <tab> Switch view <s> Settings"
+        bottom_txt = bottom_txt[0:self.width-5]
+        self.window.addstr(self.max_lines + self.top_margin, 1, bottom_txt, curses.color_pair(1))
         self.window.refresh()
 
 
