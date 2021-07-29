@@ -5,10 +5,15 @@ import re
 from .html2text import html2text
 import json
 import os
+import random
+import string
+import time;
+from .metadata import Metadata
+from .settings_manager import *
 
 class NoteManager():
 
-    def __init__(self, notePath):
+    def __init__(self, notePath=None):
         self.notePath = notePath
 
     def getMetadata(self):
@@ -53,6 +58,46 @@ class NoteManager():
             None
         os.rename(self.notePath+".tmp", self.notePath)
 
+    #return path of the new note
+    def createNewNote(self, relative_dir, tmp_extract_path):
+        
+        i=0
+        path = relative_dir
+        files = os.listdir(settingsManager.getNotePath()+"/"+path)
+        ret = []
+        basename = ""
+        found = False
+        while(not found):
+            basename = "untitled"
+            if(i>0):
+                basename = basename + " " + str(i)
+            found = True
+            for name in files:
+
+                if(name.startswith(basename)):
+                    found = False
+                    break
+            i = i+1
+        basename = basename + ''.join(random.choice(string.ascii_uppercase) for x in range(2))+".sqd"
+        self.notePath = path + "/" + basename
+        content = "<div id=\"text\" style=\"height: 100%; min-height: 315px;\"\
+         contenteditable=\"false\">\
+         <!-- be aware that THIS will be modified in java -->\
+         <div class=\"edit-zone\" contenteditable=\"true\" dir=\"auto\">\
+         </div></div><div id=\"floating\"></div>"
+        os.makedirs(tmp_extract_path)
+        index  = open(tmp_extract_path+"/index.html", "w")
+        index.write(content)
+        index.close()
+        metadata = Metadata()
+        metadata.creation_date = int(time.time() * 1000)
+        metadata.last_modification_date = metadata.creation_date
+
+        metadataFile  = open(tmp_extract_path+"/metadata.json", "w")
+        metadataFile.write(metadata.toString())
+        metadataFile.close()
+
+        return self.notePath
 
     def zipdir(self, path, ziph):
         for root, dirs, files in os.walk(path):

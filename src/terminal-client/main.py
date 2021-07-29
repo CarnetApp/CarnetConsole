@@ -2,11 +2,13 @@ import curses
 import curses.textpad
 from os import path
 import shutil
+import time;
 
 from .note_manager import NoteManager
 from .settings_manager import *
 from .path_lister import *
 from .latest_lister import *
+from .recent_db_manager import RecentDBManager
 
 import logging
 class Screen(object):
@@ -101,23 +103,48 @@ class Screen(object):
     def input_stream(self):
         """Waiting an input and run a proper method according to type of input"""
         while True:
-            self.display()
+            
 
             ch = self.window.getch()
             if ch == curses.KEY_UP:
                 self.scroll(self.UP)
+                self.display()
             elif ch == curses.KEY_DOWN:
                 self.scroll(self.DOWN)
+                self.display()
             elif ch == curses.KEY_LEFT:
                 self.paging(self.UP)
+                self.display()
             elif ch == curses.KEY_RIGHT:
                 self.paging(self.DOWN)
+                self.display()
             elif ch == ord('\t'):
                 if(self.current_view == "Latest"):
                     self.current_view = "Browser"
                 else:
                     self.current_view = "Latest"
                 self.switchToCurrentView()
+                self.display()
+            elif ch == ord('n'):
+                try:
+                    shutil.rmtree("/tmp/carnettty")
+                except FileNotFoundError:
+                    None
+                noteManager = NoteManager()
+                notePath = noteManager.createNewNote(self.current_directory, "/tmp/carnettty")
+                if(self.openNote(notePath,False)):
+                    while(notePath.startswith("/")):
+                        notePath = notePath[1:]
+                    actions = []
+                    action = {}
+                    action['action'] = "add"
+                    action['time'] = int(time.time() * 1000)
+                    action['path'] = notePath
+                    actions.append(action)
+                    recentDBManager = RecentDBManager()
+                    recentDBManager.addActionsToMyDB(actions)
+                    self.switchToCurrentView(True)
+
             elif ch == ord('p'):
                 noteManager = NoteManager(settingsManager.getNotePath()+"/"+self.items[self.top +self.current]['path'])
                 noteManager.extractNote("/tmp/carnettty")
@@ -129,48 +156,54 @@ class Screen(object):
                 curses.resetty()
                 curses.curs_set(0)
                 self.window.refresh()
+                self.display()
             elif ch == 10:
-                try:
-                    shutil.rmtree("/tmp/carnettty")
-                except FileNotFoundError:
-                    None
-                noteManager = NoteManager(settingsManager.getNotePath()+"/"+self.items[self.top +self.current]['path'])
-                noteManager.extractNote("/tmp/carnettty")
-                import subprocess
-                
-                f = open("/tmp/carnettty/index_tidy.html", "w")
-
-                proc = subprocess.Popen(['tidy','--hide-comments', 'yes',  '--show-body-only', 'yes', '-indent', '--indent-spaces', '2',   '--quiet', 'yes',   '--tidy-mark', 'no', '/tmp/carnettty/index.html'], stdout=subprocess.PIPE,
-                             universal_newlines=True)
-                data = proc.stdout.read()
-                
-                f.write(data)
-                f.close()
-                #subprocess.run(['tidy', "/tmp/carnettty/index.html", "--show-body-only", "yes"], stdout=f)
-                subprocess.run(['sed', '-i', '/floating/d', '/tmp/carnettty/index_tidy.html']) 
-                try:
-                    os.remove("/tmp/carnettty/index.html")
-                except FileNotFoundError:
-                    None
-                os.rename("/tmp/carnettty/index_tidy.html", "/tmp/carnettty/index.html")    
-                curses.savetty()
-                curses.endwin()
-                mod_date = os.stat('/tmp/carnettty/index.html').st_mtime
-                subprocess.run(['nano', "/tmp/carnettty/index.html"])
-                new_mod_date = os.stat('/tmp/carnettty/index.html').st_mtime
-                if(mod_date != new_mod_date):
-                    #we need to save
-                    noteManager.saveCurrentNote("/tmp/carnettty")
-
-                    
-                #subprocess.run(['lynx','-dump', '/tmp/carnettty/index_tidy.html'])
-                curses.resetty()
-                curses.curs_set(0)
-                self.window.refresh() 
-                self.display(True)       
+                self.openNote(self.items[self.top +self.current]['path'])       
 
             elif ch == curses.ascii.ESC:
                 break
+    # returns true if modified, false otherwise
+    def openNote(self, path, extract=True):
+       
+        noteManager = NoteManager(settingsManager.getNotePath()+"/"+path)
+        if(extract):
+            noteManager.extractNote("/tmp/carnettty")
+        import subprocess
+        
+        f = open("/tmp/carnettty/index_tidy.html", "w")
+
+        proc = subprocess.Popen(['tidy','--hide-comments', 'yes',  '--show-body-only', 'yes', '-indent', '--indent-spaces', '2',   '--quiet', 'yes',   '--tidy-mark', 'no', '/tmp/carnettty/index.html'], stdout=subprocess.PIPE,
+                        universal_newlines=True)
+        data = proc.stdout.read()
+        
+        f.write(data)
+        f.close()
+        #subprocess.run(['tidy', "/tmp/carnettty/index.html", "--show-body-only", "yes"], stdout=f)
+        subprocess.run(['sed', '-i', '/floating/d', '/tmp/carnettty/index_tidy.html']) 
+        try:
+            os.remove("/tmp/carnettty/index.html")
+        except FileNotFoundError:
+            None
+        os.rename("/tmp/carnettty/index_tidy.html", "/tmp/carnettty/index.html")    
+        curses.savetty()
+        curses.endwin()
+        mod_date = os.stat('/tmp/carnettty/index.html').st_mtime
+        subprocess.run(['nano', "/tmp/carnettty/index.html"])
+        new_mod_date = os.stat('/tmp/carnettty/index.html').st_mtime
+        if(mod_date != new_mod_date):
+            #we need to save
+            noteManager.saveCurrentNote("/tmp/carnettty")
+            modified = True
+        else:
+            modified = False
+
+            
+        #subprocess.run(['lynx','-dump', '/tmp/carnettty/index_tidy.html'])
+        curses.resetty()
+        curses.curs_set(0)
+        self.window.refresh() 
+        self.display(True)
+        return modified
 
     def scroll(self, direction):
         """Scrolling the window when pressing up/down arrow keys"""

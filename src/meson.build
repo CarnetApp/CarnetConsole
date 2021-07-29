@@ -27,7 +27,7 @@ carnettty_sources = [
   'terminal-client/listers/latest_lister.py',
   'server/settings_manager.py',
   'server/notes/note_manager.py',
-  'server/notes/note_manager.py',
+  'server/notes/metadata.py',
   'server/databases/recent_db_manager.py',
   'server/databases/sync_db.py',
   'server/databases/keyword_db_manager.py',
