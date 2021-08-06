@@ -221,7 +221,7 @@ class Screen(object):
         import _thread
         self.shouldSave = True
         _thread.start_new_thread( self.saveNoteThread, (noteManager, path,  addToRecent, mod_date))
-        subprocess.run(['nano', "/tmp/carnettty/index.html"])
+        subprocess.run(['nano', '-$cwS', "/tmp/carnettty/index.html"])
         self.shouldSave = False
         self.saveNoteIfChanged(noteManager, path, addToRecent, mod_date)
       
