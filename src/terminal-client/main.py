@@ -189,8 +189,10 @@ class Screen(object):
             
             new_mod_date = self.saveNoteIfChanged(noteManager, notePath, addToRecent, mod_date)
             mod_date = new_mod_date
-            time.sleep(5)
-        
+            for i in range(0,20):
+               if(self.shouldSave):
+                  time.sleep(0.2)
+
 
     # returns true if modified, false otherwise
     def openNote(self, path, extract=True, addToRecent=False):
@@ -219,10 +221,15 @@ class Screen(object):
         curses.endwin()
         mod_date = os.stat('/tmp/carnettty/index.html').st_mtime
         import _thread
+        #pb ici: le shoudSave passe à false après, puis à nouveau à true pendannt le sleep du coup l'ancien thread continue
         self.shouldSave = True
-        _thread.start_new_thread( self.saveNoteThread, (noteManager, path,  addToRecent, mod_date))
+        from threading import Thread
+        th = Thread(target=self.saveNoteThread, args=(noteManager, path, addToRecent, mod_date,))
+        th.start()
+#        th = _thread.start_new_thread( self.saveNoteThread, (noteManager, path,  addToRecent, mod_date))
         subprocess.run(['nano', '-$cwS', "/tmp/carnettty/index.html"])
         self.shouldSave = False
+        th.join()
         self.saveNoteIfChanged(noteManager, path, addToRecent, mod_date)
       
 
